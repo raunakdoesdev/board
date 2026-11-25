@@ -20,7 +20,7 @@
     // A host behind a gateway that signs people in and names them in a header: the inspector, as them.
     "GATEWAY_HOST": "",
     "GATEWAY_EMAIL_HEADER": "",
-    "GATEWAY_AVATAR_HEADER": ""
+    "GATEWAY_DOMAIN": ""
   }
   // Secrets: `wrangler secret put BOARD_TOKENS` with `{"ada":"<a long random token>"}`, for the CLI and agents.
 }

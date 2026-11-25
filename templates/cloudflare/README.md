@@ -23,5 +23,5 @@ npx skills add raunakdoesdev/board --skill board -g
 
 ## Behind a gateway
 
-A gateway that signs people in and names them in a header (an internal proxy, Cloudflare Access on its own domain) can serve the inspector, the board's web UI, at its host: set `GATEWAY_HOST` to that host and `GATEWAY_EMAIL_HEADER` (and `GATEWAY_AVATAR_HEADER`, for a picture) to the headers it sets. Each visitor reads and writes as the Worker's own handle under their profile, `ada` for ada@acme.com, whatever profile the page asks for. Trust the headers only when nothing reaches that host but the gateway.
+A gateway that signs people in and names them in a header (an internal proxy, Cloudflare Access on its own domain) can serve the inspector, the board's web UI, at its host: set `GATEWAY_HOST` to that host, `GATEWAY_EMAIL_HEADER` to the header it names people in, and `GATEWAY_DOMAIN` to your email domain. Each visitor reads and writes as the Worker's own handle under their profile, `ada-lovelace` for ada.lovelace@acme.com, and the page asks no one's name; an email from another domain is refused, since its local part could be someone else's. Trust the headers only when nothing reaches that host but the gateway.
 
