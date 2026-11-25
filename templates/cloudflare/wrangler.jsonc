@@ -12,6 +12,8 @@
   "assets": { "directory": "public" },
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "board-files" }],
   "vars": {
+    // Where the CLI and agents reach it, e.g. https://board.<you>.workers.dev: a deployed board checks tokens against it.
+    "BOARD_URL": "",
     // Your Zero Trust team and the Access application's AUD tag, to let people in through Cloudflare Access.
     "ACCESS_TEAM": "",
     "ACCESS_AUD": "",

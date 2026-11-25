@@ -11,6 +11,8 @@ type Env = {
   FILES: R2Bucket
   /** `{ "handle": "token" }`: API tokens for the CLI and agents, as a secret. */
   BOARD_TOKENS?: string
+  /** The board's URL, which every token's audience must equal: its `workers.dev` URL, say. */
+  BOARD_URL?: string
   ACCESS_TEAM?: string
   ACCESS_AUD?: string
   /** A host a gateway in front signs people in at, and names them in `GATEWAY_EMAIL_HEADER`: it serves the inspector. */
@@ -30,7 +32,7 @@ export class Board extends DurableObject<Env> {
     this.backend = durableObject(ctx.storage, { blob: r2Blob(env.FILES) })
     const tokens = bearerTokens(env.BOARD_TOKENS ? (JSON.parse(env.BOARD_TOKENS) as Record<string, string>) : {})
     const access = env.ACCESS_TEAM && env.ACCESS_AUD ? cloudflareAccess({ team: env.ACCESS_TEAM, aud: env.ACCESS_AUD }) : null
-    this.team = board({ backend: this.backend, authenticate: access ? firstOf(tokens, access) : tokens })
+    this.team = board({ backend: this.backend, authenticate: access ? firstOf(tokens, access) : tokens, ...(env.BOARD_URL ? { url: env.BOARD_URL } : {}) })
     this.page = inspector({ board: this.team, basePath: '' })
   }
 
