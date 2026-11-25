@@ -130,7 +130,7 @@ describe('authenticating on Cloudflare', () => {
 
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const odd = board({ backend: durableObject(durableStorage()), authenticate: bearerTokens({ _bot: 'tok_bot', 'no one': 'tok_none' }), url: BOARD_URL })
-    expect(await whoIs(odd, { authorization: 'Bearer tok_bot' })).toBe('cloudflare:user:_bot')
+    expect(await whoIs(odd, { authorization: 'Bearer tok_bot' })).toBe(401)
     expect(await whoIs(odd, { authorization: 'Bearer tok_none' })).toBe(401)
     error.mockRestore()
   })
@@ -175,6 +175,6 @@ describe('authenticating on Cloudflare', () => {
     const plus = await whoIs(team, { 'cf-access-jwt-assertion': await sign('a+b@example.com') })
     expect(plain).toBe('cloudflare:user:a_b@example.com')
     expect(plus).not.toBe(plain)
-    expect(await whoIs(team, { 'cf-access-jwt-assertion': await sign("o'connor@example.com") })).toBe("cloudflare:user:o'connor@example.com")
+    expect(await whoIs(team, { 'cf-access-jwt-assertion': await sign("o'connor@example.com") })).toBe(401)
   })
 })

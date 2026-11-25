@@ -2,7 +2,7 @@
 // log, tables, and schedule in the object's SQLite, and its files in R2.
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose'
 import { a2 } from './a2.ts'
-import { LOGINS, namesByLogin, type Authenticate } from './auth.ts'
+import { LOGIN, LOGINS, namesByLogin, type Authenticate } from './auth.ts'
 import type { Backend, BoardBinding, Caller, ProtocolMethods, Trust } from './backend.ts'
 import type { BlobStore } from './blob.ts'
 import { HttpError, unauthorized } from './errors.ts'
@@ -94,8 +94,6 @@ export function r2Blob(bucket: R2Like, prefix = ''): BlobStore {
 }
 
 /** A service token's client ID, or a token's handle, as a principal ID's last part holds it. */
-/** What follows `cloudflare:user:` in a principal's id. */
-const ID_PART = /^[^\s+\]]{1,184}$/
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/
 /** A handle: no spaces, 64 characters at most. */
 const handleOf = (value: string) => value.replace(/\s+/g, '_').slice(0, 64) || 'unknown'
@@ -143,7 +141,7 @@ export function cloudflareAccess(options: CloudflareAccessOptions): Authenticate
     const expiresAt = typeof payload.exp === 'number' ? new Date(payload.exp * 1000) : null
     if (typeof payload.email === 'string' && payload.email) {
       const email = payload.email.toLowerCase()
-      if (!ID_PART.test(email)) throw unauthorized(`${email} can't be a person on this board: an id here has no spaces, \`+\`, or \`]\``)
+      if (!LOGIN.test(email)) throw unauthorized(`${email} can't be a person on this board: a login here is letters, numbers, and ._-`)
       return { id: `cloudflare:user:${email}`, kind: 'person', handle: handleOf(email.split('@')[0]!), expiresAt }
     }
     const service = typeof payload.common_name === 'string' ? payload.common_name : null
@@ -164,8 +162,8 @@ export function bearerTokens(tokens: Readonly<Record<string, string>>): Authenti
     Object.entries(tokens)
       .filter(([handle, token]) => {
         // A handle no principal can carry lets no one in, rather than keeping the board from starting.
-        if (!ID_PART.test(handle)) console.error(`[board] a token's handle has no spaces, \`+\`, or \`]\`; skipped ${JSON.stringify(handle)}`)
-        return token.length > 0 && ID_PART.test(handle)
+        if (!NAME.test(handle)) console.error(`[board] a token's handle is letters, numbers, and ._-, starting with one of the first two; skipped ${JSON.stringify(handle)}`)
+        return token.length > 0 && NAME.test(handle)
       })
       .map(async ([handle, token]) => ({ handle, hash: await digest(token) })),
   )
