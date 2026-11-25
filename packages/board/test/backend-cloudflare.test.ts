@@ -1,57 +1,16 @@
-import { DatabaseSync } from 'node:sqlite'
 import { generateKeyPair, exportJWK, createLocalJWKSet, SignJWT } from 'jose'
 import { describe, expect, it, vi } from 'vitest'
 import { board as handle } from '../src/server/index.ts'
 import { http } from '../src/backend-http/index.ts'
-import { bearerTokens, cloudflareAccess, durableObject, type DurableStorage } from '../src/backend-cloudflare/index.ts'
+import { bearerTokens, cloudflareAccess, durableObject, firstOf, type DurableStorage } from '../src/backend-cloudflare/index.ts'
+import { alarmScheduler } from '../src/scheduler/alarms.ts'
 import { memoryBlob } from '../src/server/blob.ts'
 import { oidcTokens } from '../src/access/index.ts'
 import { conformance } from '../src/conformance/index.ts'
+import { durableStorage } from './durable-storage.ts'
 import { bearer, board, BOARD_URL, personToken, testAuth } from './harness.ts'
 
 vi.setConfig({ testTimeout: 60_000 })
-
-/**
- * A Durable Object's storage on Node's SQLite, held to what Cloudflare's takes: no `begin`, `commit`,
- * `rollback`, or savepoints of the caller's own (`transactionSync` instead), and no `pragma`s.
- */
-function durableStorage() {
-  const db = new DatabaseSync(':memory:')
-  let alarm: number | null = null
-  let depth = 0
-  const storage: DurableStorage = {
-    sql: {
-      exec(query, ...bindings) {
-        if (/^\s*(begin|commit|rollback|savepoint|release|pragma)\b/i.test(query)) throw new Error(`not authorized: ${query.trim().split(/\s/)[0]}`)
-        if (bindings.length === 0 && !/^\s*(select|with)\b/i.test(query)) {
-          db.exec(query)
-          return { toArray: () => [] }
-        }
-        const values = bindings.map((value) => (value instanceof ArrayBuffer ? new Uint8Array(value) : value))
-        const rows = db.prepare(query).all(...(values as never[])) as Record<string, unknown>[]
-        return { toArray: () => rows.map((row) => ({ ...row })) }
-      },
-    },
-    transactionSync(fn) {
-      const name = `t${depth++}`
-      db.exec(`savepoint ${name}`)
-      try {
-        const result = fn()
-        db.exec(`release ${name}`)
-        return result
-      } catch (error) {
-        db.exec(`rollback to ${name}`)
-        db.exec(`release ${name}`)
-        throw error
-      } finally {
-        depth--
-      }
-    },
-    getAlarm: async () => alarm,
-    setAlarm: async (at) => void (alarm = Number(at)),
-  }
-  return Object.assign(storage, { alarmAt: () => alarm })
-}
 
 /** A board in a Durable Object on `storage`, as a Worker's object serves it: a new object is a restart. */
 function objectBoard(storage: DurableStorage) {
@@ -96,6 +55,16 @@ describe('a board in a Durable Object', () => {
     expect(messages.map((message) => message.text)).toEqual(['deploy at 5', 'ack'])
   })
 
+  it('keeps a message that mentions more people than a statement binds, and shows a full page of the latest', async () => {
+    const client = await clientOf(objectBoard(durableStorage()).fetch)
+    const text = Array.from({ length: 40 }, (_, i) => `@agent${i}`).join(' ')
+    await client.post('ops', text)
+    for (let i = 0; i < 100; i++) await client.post('load', `note ${i}`)
+    const { messages } = await client.channel('ops').messages({ limit: 10 })
+    expect(messages.map((message) => message.text)).toEqual([text])
+    expect((await client.channel('load').messages({ limit: 100 })).messages).toHaveLength(100)
+  })
+
   it('sends a scheduled message when the alarm it set goes off, after a restart', async () => {
     const storage = durableStorage()
     const team = await clientOf(objectBoard(storage).fetch)
@@ -112,6 +81,22 @@ describe('a board in a Durable Object', () => {
       },
       { timeout: 10_000, interval: 250 },
     )
+  })
+})
+
+describe('a Durable Object alarm', () => {
+  it('keeps a task that fails and wakes again to retry it', async () => {
+    const storage = durableStorage()
+    const scheduler = alarmScheduler(storage)
+    const dueAt = Date.now() - 1
+    await scheduler.schedule({ version: 1, kind: 'drain', contract: 'nobody-serves-this', sessionId: 's1', dueAt })
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await scheduler.alarm()
+    error.mockRestore()
+    expect(storage.alarmAt()).toBeGreaterThan(Date.now())
+    // A restart still has it.
+    await alarmScheduler(storage).alarm()
+    expect(storage.alarmAt()).toBeGreaterThan(Date.now())
   })
 })
 
@@ -153,5 +138,32 @@ describe('authenticating on Cloudflare', () => {
     const team = board({ backend: durableObject(durableStorage()), authenticate: cloudflareAccess({ team: 'acme', aud: 'aud_board', jwks }), url: BOARD_URL })
     expect(await whoIs(team, { 'cf-access-jwt-assertion': await sign('aud_board') })).toBe('cloudflare:user:ada@example.com')
     expect(await whoIs(team, { 'cf-access-jwt-assertion': await sign('aud_other') })).toBe(401)
+    expect(await whoIs(team, { cookie: `CF_Authorization=${await sign('aud_board')}`, 'sec-fetch-site': 'cross-site' })).toBe(403)
+    expect(await whoIs(team, { cookie: `CF_Authorization=${await sign('aud_board')}`, 'sec-fetch-site': 'same-origin' })).toBe('cloudflare:user:ada@example.com')
+
+    const both = board({
+      backend: durableObject(durableStorage()),
+      authenticate: firstOf(bearerTokens({ bot: 'tok_bot' }), cloudflareAccess({ team: 'acme', aud: 'aud_board', jwks })),
+      url: BOARD_URL,
+    })
+    expect(await whoIs(both, { authorization: 'Bearer tok_bot' })).toBe('cloudflare:user:bot')
+    expect(await whoIs(both, { 'cf-access-jwt-assertion': await sign('aud_board') })).toBe('cloudflare:user:ada@example.com')
+  })
+
+  it("keeps two people whose emails differ only by + and _ apart", async () => {
+    const { publicKey, privateKey } = await generateKeyPair('RS256')
+    const jwks = createLocalJWKSet({ keys: [{ ...(await exportJWK(publicKey)), kid: 'cf', alg: 'RS256' }] })
+    const sign = (email: string) =>
+      new SignJWT({ email })
+        .setProtectedHeader({ alg: 'RS256', kid: 'cf' })
+        .setIssuer('https://acme.cloudflareaccess.com')
+        .setAudience('aud_board')
+        .setExpirationTime('1h')
+        .sign(privateKey)
+    const team = board({ backend: durableObject(durableStorage()), authenticate: cloudflareAccess({ team: 'acme', aud: 'aud_board', jwks }), url: BOARD_URL })
+    const plain = await whoIs(team, { 'cf-access-jwt-assertion': await sign('a_b@example.com') })
+    const plus = await whoIs(team, { 'cf-access-jwt-assertion': await sign('a+b@example.com') })
+    expect(plain).toBe('cloudflare:user:a_b@example.com')
+    expect(plus).not.toBe(plain)
   })
 })

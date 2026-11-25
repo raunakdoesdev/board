@@ -2,7 +2,7 @@
 // log, tables, and schedule in the object's SQLite, and its files in R2.
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose'
 import { a2 } from './a2.ts'
-import { LOGINS, type Authenticate } from './auth.ts'
+import { LOGIN, LOGINS, namesByLogin, type Authenticate } from './auth.ts'
 import type { Backend, BoardBinding, Caller, ProtocolMethods, Trust } from './backend.ts'
 import type { BlobStore } from './blob.ts'
 import { HttpError, unauthorized } from './errors.ts'
@@ -93,8 +93,8 @@ export function r2Blob(bucket: R2Like, prefix = ''): BlobStore {
   }
 }
 
-/** A principal ID's last part: no spaces, `+`, or `]`. */
-const idPart = (value: string) => value.replace(/[\s+\]]/g, '_').slice(0, 200)
+/** A service token's client ID, or a token's handle, as a principal ID's last part holds it. */
+const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/
 /** A handle: no spaces, 64 characters at most. */
 const handleOf = (value: string) => value.replace(/\s+/g, '_').slice(0, 64) || 'unknown'
 
@@ -127,6 +127,11 @@ export function cloudflareAccess(options: CloudflareAccessOptions): Authenticate
         .find((part) => part.startsWith('CF_Authorization='))
         ?.slice('CF_Authorization='.length)
     if (!token) return null
+    // A browser sends the Access cookie with any site's requests: only the board's own pages act as its visitor.
+    const site = request.headers.get('sec-fetch-site')
+    const origin = request.headers.get('origin')
+    if ((site !== null && site !== 'same-origin' && site !== 'none') || (origin !== null && origin !== new URL(request.audience).origin))
+      throw new HttpError(403, 'forbidden', "a page on another site can't act as you on this board")
     let payload: Record<string, unknown>
     try {
       ;({ payload } = await jwtVerify(token, jwks, { issuer, audience }))
@@ -136,10 +141,11 @@ export function cloudflareAccess(options: CloudflareAccessOptions): Authenticate
     const expiresAt = typeof payload.exp === 'number' ? new Date(payload.exp * 1000) : null
     if (typeof payload.email === 'string' && payload.email) {
       const email = payload.email.toLowerCase()
-      return { id: `cloudflare:user:${idPart(email)}`, kind: 'person', handle: handleOf(email.split('@')[0]!), expiresAt }
+      if (!LOGIN.test(email)) throw unauthorized(`${email} can't be a person on this board: a login here has no \`+\``)
+      return { id: `cloudflare:user:${email}`, kind: 'person', handle: handleOf(email.split('@')[0]!), expiresAt }
     }
     const service = typeof payload.common_name === 'string' ? payload.common_name : null
-    if (service) return { id: `cloudflare:service:${idPart(service)}`, kind: 'person', handle: handleOf(service), expiresAt }
+    if (service && NAME.test(service)) return { id: `cloudflare:service:${service}`, kind: 'person', handle: handleOf(service), expiresAt }
     throw unauthorized('this Cloudflare Access token names no person or service token')
   }
   return Object.assign(authenticate, { [LOGINS]: true })
@@ -152,6 +158,7 @@ export function cloudflareAccess(options: CloudflareAccessOptions): Authenticate
  */
 export function bearerTokens(tokens: Readonly<Record<string, string>>): Authenticate {
   const digest = async (value: string) => new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))
+  for (const handle of Object.keys(tokens)) if (!NAME.test(handle)) throw new TypeError(`a token's handle is letters, numbers, and ._-, got ${JSON.stringify(handle)}`)
   const known = Promise.all(
     Object.entries(tokens)
       .filter(([, token]) => token.length > 0)
@@ -162,6 +169,22 @@ export function bearerTokens(tokens: Readonly<Record<string, string>>): Authenti
     if (!request.credential) return null
     const hash = await digest(request.credential)
     const found = (await known).find((entry) => same(entry.hash, hash))
-    return found ? { id: `cloudflare:user:${idPart(found.handle)}`, kind: 'person', handle: handleOf(found.handle) } : null
+    return found ? { id: `cloudflare:user:${found.handle}`, kind: 'person', handle: handleOf(found.handle) } : null
   }
+}
+
+/**
+ * Verifiers tried in turn, the first that recognizes a request saying who it is:
+ * `firstOf(bearerTokens(tokens), cloudflareAccess(access))`. Grants name people by their logins
+ * when any of them does.
+ */
+export function firstOf(...verifiers: readonly Authenticate[]): Authenticate {
+  const authenticate: Authenticate = async (request) => {
+    for (const verify of verifiers) {
+      const principal = await verify(request)
+      if (principal !== null && principal !== undefined) return principal
+    }
+    return null
+  }
+  return verifiers.some(namesByLogin) ? Object.assign(authenticate, { [LOGINS]: true }) : authenticate
 }

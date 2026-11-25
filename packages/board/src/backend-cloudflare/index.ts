@@ -2,6 +2,7 @@ export {
   bearerTokens,
   cloudflareAccess,
   durableObject,
+  firstOf,
   r2Blob,
   type CloudflareAccessOptions,
   type DurableObjectBackend,
