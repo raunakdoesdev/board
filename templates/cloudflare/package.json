@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "board": "pnpm --filter @vercel/board build",
+    "board": "pnpm --filter @vercel/board build && mkdir -p public && cp ../../packages/board/dist/inspect/app.js public/",
     "dev": "pnpm board && wrangler dev",
     "deploy": "pnpm board && wrangler deploy",
     "typecheck": "tsc --noEmit"
