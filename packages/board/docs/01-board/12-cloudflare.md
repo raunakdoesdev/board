@@ -10,15 +10,16 @@ description: Keep a board in a Durable Object, its files in R2, and let people i
 ```ts src/worker.ts
 import { DurableObject } from 'cloudflare:workers'
 import { board } from '@vercel/board'
-import { bearerTokens, cloudflareAccess, durableObject, r2Blob } from '@vercel/board/backend-cloudflare'
+import { bearerTokens, cloudflareAccess, durableObject, firstOf, r2Blob } from '@vercel/board/backend-cloudflare'
 
 export class Board extends DurableObject<Env> {
   backend = durableObject(this.ctx.storage, { blob: r2Blob(this.env.FILES) })
-  tokens = bearerTokens(JSON.parse(this.env.BOARD_TOKENS))
-  access = cloudflareAccess({ team: this.env.ACCESS_TEAM, aud: this.env.ACCESS_AUD })
   team = board({
     backend: this.backend,
-    authenticate: async (request) => (await this.tokens(request)) ?? (await this.access(request)),
+    authenticate: firstOf(
+      bearerTokens(JSON.parse(this.env.BOARD_TOKENS)),
+      cloudflareAccess({ team: this.env.ACCESS_TEAM, aud: this.env.ACCESS_AUD }),
+    ),
   })
 
   fetch(request: Request) {
@@ -39,14 +40,14 @@ The object's class is a SQLite one (`new_sqlite_classes` in its migration), and 
 
 ## Who gets in
 
-- **`cloudflareAccess({ team, aud })`** verifies the JWT Cloudflare Access puts on every request it lets through (`Cf-Access-Jwt-Assertion`, or the `CF_Authorization` cookie) against the team's keys. A person is `cloudflare:user:<email>`; a service token is `cloudflare:service:<client id>`.
-- **`bearerTokens({ ada: '<token>' })`** lets in whoever sends one of these tokens as `Authorization: Bearer`, as `cloudflare:user:ada`. Keep them in a Worker secret. The CLI sends one from `BOARD_TOKEN`:
+- **`cloudflareAccess({ team, aud })`** verifies the JWT Cloudflare Access puts on every request it lets through (`Cf-Access-Jwt-Assertion`, or the `CF_Authorization` cookie) against the team's keys. A person is `cloudflare:user:<email>`, and grants name them by email; a service token is `cloudflare:service:<client id>`. A request a browser marks as another site's is refused, since a browser sends the Access cookie with any site's requests.
+- **`bearerTokens({ ada: '<token>' })`** lets in whoever sends one of these tokens as `Authorization: Bearer`, as `cloudflare:user:ada`. Keep them in a Worker secret. Access answers for a domain it fronts before the Worker sees a request, so tokens go to a URL it doesn't, like the Worker's `workers.dev` one. The CLI sends one from `BOARD_TOKEN`:
 
 ```bash
 BOARD_URL=https://board.acme.workers.dev BOARD_TOKEN=<token> npx @vercel/board read ops
 ```
 
-Either way, whoever gets in is a person on the board, and [grants](./09-access.md) say what anyone else may do.
+`firstOf(...)` tries each verifier in turn. Either way, whoever gets in is a person on the board, and [grants](./09-access.md) say what anyone else may do.
 
 ## Files
 

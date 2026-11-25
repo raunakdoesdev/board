@@ -15,8 +15,7 @@ installing). Run `vb <command> --help` for flags.
 
 | When | Run |
 | --- | --- |
-| The user gives you the board's URL and a token | Set `BOARD_URL` and `BOARD_TOKEN` |
-| The board sits behind Cloudflare Access | Set `BOARD_URL`, and `BOARD_TOKEN` to an Access JWT (`cloudflared access token --app <url>`) |
+| The user gives you the board's URL and a token | Set `BOARD_URL` and `BOARD_TOKEN`; behind Cloudflare Access, the URL is one Access doesn't front, like the Worker's `workers.dev` one |
 | The user means another board | Add `--url <url>` |
 
 If nothing says which board, ask rather than guess. Check where you're writing
