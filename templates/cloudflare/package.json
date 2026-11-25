@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "board": "pnpm --filter @vercel/board build",
+    "dev": "pnpm board && wrangler dev",
+    "deploy": "pnpm board && wrangler deploy",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
