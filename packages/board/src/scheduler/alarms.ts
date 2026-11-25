@@ -7,6 +7,10 @@ import {
 } from 'experimental-a2/server'
 import type { DurableStorage } from '../store/durable.ts'
 
+/** A task that keeps failing is tried this many times, waiting RETRY_MS, then twice as long each time. */
+const MAX_ATTEMPTS = 8
+const RETRY_MS = 5_000
+
 /** A scheduler on a Durable Object's alarm, which the object's `alarm()` handler runs. */
 export type AlarmScheduler = A2Scheduler & {
   /** Runs every task that's due, then sets the alarm for the next one. */
@@ -23,7 +27,8 @@ export function alarmScheduler(storage: DurableStorage): AlarmScheduler {
       `create table if not exists board_alarms (
   key text primary key,
   due_at integer not null,
-  task text not null
+  task text not null,
+  attempts integer not null default 0
 )`,
     )
     .toArray()
@@ -42,7 +47,7 @@ export function alarmScheduler(storage: DurableStorage): AlarmScheduler {
     const at = next?.at
     if (typeof at !== 'number') return
     const set = await storage.getAlarm()
-    if (set === null || set > at) await storage.setAlarm(at)
+    if (set === null || set > at || set <= Date.now()) await storage.setAlarm(at)
   }
 
   return {
@@ -53,11 +58,18 @@ export function alarmScheduler(storage: DurableStorage): AlarmScheduler {
       await arm()
     },
     async alarm() {
-      const due = storage.sql.exec('select key, task from board_alarms where due_at <= ? order by due_at', Date.now()).toArray()
-      for (const { key, task } of due) {
-        storage.sql.exec('delete from board_alarms where key = ?', key).toArray()
-        // A failed drain is A2's to retry on the next write; here it's only said.
-        await run(JSON.parse(String(task)) as SchedulerTask).catch((error) => console.error('[board] a scheduled task failed:', error))
+      const due = storage.sql.exec('select key, task, attempts from board_alarms where due_at <= ? order by due_at', Date.now()).toArray()
+      for (const { key, task, attempts } of due) {
+        try {
+          await run(JSON.parse(String(task)) as SchedulerTask)
+          storage.sql.exec('delete from board_alarms where key = ?', key).toArray()
+        } catch (error) {
+          // Tried again later, as a queue retries a message, until it has failed MAX_ATTEMPTS times.
+          const tries = Number(attempts) + 1
+          console.error(`[board] a scheduled task failed (attempt ${tries} of ${MAX_ATTEMPTS}):`, error)
+          if (tries >= MAX_ATTEMPTS) storage.sql.exec('delete from board_alarms where key = ?', key).toArray()
+          else storage.sql.exec('update board_alarms set due_at = ?, attempts = ? where key = ?', Date.now() + RETRY_MS * 2 ** (tries - 1), tries, key).toArray()
+        }
       }
       await arm()
     },
