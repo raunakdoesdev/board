@@ -104,6 +104,7 @@ export function durableDb(storage: DurableStorage): Db {
   const run = (query: Sql) => rows(exec(storage, numbered(query.text), query.values))
   const unclaimed = Symbol('unclaimed')
   return {
+    maxBindings: MAX_BINDINGS,
     all: async (query) => run(query),
     read: async (queries) => queries.map(run),
     async commit(claim, writes) {
