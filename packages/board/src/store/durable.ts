@@ -22,6 +22,34 @@ const bind = (value: unknown) => {
   if (value instanceof Uint8Array) return value.slice().buffer
   return value ?? null
 }
+const hex = (bytes: Uint8Array) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+/** A value as SQL: what a statement past the bound-parameter limit writes in its text instead. */
+const literal = (value: unknown): string => {
+  if (value === null || value === undefined) return 'null'
+  if (typeof value === 'boolean') return value ? '1' : '0'
+  if (typeof value === 'bigint') return value.toString()
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new TypeError(`SQLite can't store ${value}`)
+    return String(value)
+  }
+  if (value instanceof Uint8Array) return `x'${hex(value)}'`
+  if (value instanceof ArrayBuffer) return `x'${hex(new Uint8Array(value))}'`
+  return `'${String(value).replaceAll("'", "''")}'`
+}
+
+/** A Durable Object binds at most 100 parameters to a statement. */
+const MAX_BINDINGS = 100
+
+/**
+ * `query` on the object's SQL with `values` for its `?` or `?N` parameters, written into its text
+ * when there are more than it binds.
+ */
+function exec(storage: DurableStorage, query: string, values: readonly unknown[]): DurableCursor {
+  if (values.length <= MAX_BINDINGS) return storage.sql.exec(query, ...values.map(bind))
+  let next = 0
+  return storage.sql.exec(query.replace(/\?(\d*)/g, (_, n: string) => literal(values[n ? Number(n) - 1 : next++])))
+}
+
 const rows = (cursor: DurableCursor) =>
   cursor.toArray().map((row) => {
     for (const key in row) if (row[key] instanceof ArrayBuffer) row[key] = new Uint8Array(row[key] as ArrayBuffer)
@@ -48,7 +76,7 @@ class DurableDatabase {
 
   prepare(query: string) {
     const { sql } = this.storage
-    const all = (...values: unknown[]) => rows(sql.exec(query, ...values.map(bind)))
+    const all = (...values: unknown[]) => rows(exec(this.storage, query, values))
     return {
       all,
       get: (...values: unknown[]) => all(...values)[0],
@@ -73,7 +101,7 @@ const numbered = (text: string) => text.replace(/\$(\d+)/g, '?$1')
 /** The board's tables on a Durable Object's SQL. Each of its turns runs alone, so a read is one snapshot. */
 export function durableDb(storage: DurableStorage): Db {
   for (const statement of ddl()) storage.sql.exec(statement).toArray()
-  const run = (query: Sql) => rows(storage.sql.exec(numbered(query.text), ...query.values.map(bind)))
+  const run = (query: Sql) => rows(exec(storage, numbered(query.text), query.values))
   const unclaimed = Symbol('unclaimed')
   return {
     all: async (query) => run(query),
