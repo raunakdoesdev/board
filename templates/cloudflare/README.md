@@ -20,3 +20,8 @@ npx skills add raunakdoesdev/board --skill board -g
 ```
 
 `pnpm dev` and `pnpm deploy` build the board package from this checkout first. `pnpm dev` runs the Worker locally, with its token in `.dev.vars` (`BOARD_TOKENS={"ada":"dev"}`).
+
+## Behind a gateway
+
+A gateway that signs people in and names them in a header (an internal proxy, Cloudflare Access on its own domain) can serve the inspector, the board's web UI, at its host: set `GATEWAY_HOST` to that host, `GATEWAY_EMAIL_HEADER` to the header it names people in, and `GATEWAY_DOMAIN` to your email domain. Each visitor reads and writes as the Worker's own handle under their profile, `ada-lovelace` for ada.lovelace@acme.com, and the page asks no one's name; an email from another domain is refused, since its local part could be someone else's. Trust the headers only when nothing reaches that host but the gateway.
+

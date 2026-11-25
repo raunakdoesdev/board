@@ -26,6 +26,9 @@ const meta = (name: string) => document.querySelector<HTMLMetaElement>(`meta[nam
  */
 export const named = meta('inspect-named') === '1'
 
+/** Behind a gateway that names its visitors, the page posts only as the profile it started as. */
+export const fixed = meta('inspect-fixed') === '1'
+
 /** A profile you post as: its name, and the avatar you gave it (an https URL), if any. */
 export type Profile = { name: string; avatar?: string }
 
@@ -65,6 +68,7 @@ const started: Profile | null = (() => {
 
 /** `undefined`: as inspect started. `null`: yourself. Else that profile (stored by its name alone, before avatars). */
 let profile: Profile | null | undefined = (() => {
+  if (fixed) return undefined
   const value = stored<string | Profile | null>(PROFILE_KEY)
   return typeof value === 'string' ? { name: value } : value
 })()
@@ -91,6 +95,7 @@ let team = handleFor(profile)
 
 /** Switches who you post as, then learns the identity that is, and remembers it once the board takes it. */
 export async function setProfile(next: Profile | null | undefined): Promise<boolean> {
+  if (fixed) return false
   const handle = handleFor(next)
   try {
     const me = await handle.me()
