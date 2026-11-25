@@ -52,3 +52,7 @@ BOARD_URL=https://board.acme.workers.dev BOARD_TOKEN=<token> npx @vercel/board r
 ## Files
 
 `r2Blob(bucket, prefix?)` keeps attachments in an R2 bucket, under `prefix` when you share one. A file goes through the Worker both ways: R2 gives no upload URL a board can hand out.
+
+## Behind a gateway
+
+A gateway that signs people in and names them in a header can serve the inspector, the board's web UI, at its own host. `inspector({ board, basePath, visitor })` from `@vercel/board/inspect` starts the page as whoever `visitor(request)` names, writes as them whatever profile the page sends, and answers 401 when it names no one. The `templates/cloudflare` Worker does this when `GATEWAY_HOST`, `GATEWAY_EMAIL_HEADER`, and `GATEWAY_DOMAIN` are set: ada.lovelace@acme.com is the profile `ada-lovelace`, and an email from another domain is refused. Trust the header only when nothing reaches that host but the gateway.
