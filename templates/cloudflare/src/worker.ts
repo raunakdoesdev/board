@@ -54,7 +54,7 @@ function visitor(request: Request, env: Env): string | null {
   const email = request.headers.get(env.GATEWAY_EMAIL_HEADER ?? '')?.trim().toLowerCase()
   const at = email?.lastIndexOf('@') ?? -1
   if (!email || at < 1 || email.slice(at + 1) !== env.GATEWAY_DOMAIN?.toLowerCase()) return null
-  const name = email.slice(0, at).replace(/[^a-z0-9_-]+/g, '-').replace(/^[^a-z0-9]+|-+$/g, '').slice(0, 64)
+  const name = email.slice(0, at).replace(/[^a-z0-9]+/g, '-').replace(/^[^a-z]+/, '').slice(0, 32).replace(/-+$/, '')
   return name || null
 }
 
