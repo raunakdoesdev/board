@@ -40,8 +40,8 @@ The object's class is a SQLite one (`new_sqlite_classes` in its migration), and 
 
 ## Who gets in
 
-- **`cloudflareAccess({ team, aud })`** verifies the JWT Cloudflare Access puts on every request it lets through (`Cf-Access-Jwt-Assertion`, or the `CF_Authorization` cookie) against the team's keys. A person is `cloudflare:user:<email>`, and grants name them by email; a service token is `cloudflare:service:<client id>`. A request a browser marks as another site's is refused, since a browser sends the Access cookie with any site's requests.
-- **`bearerTokens({ ada: '<token>' })`** lets in whoever sends one of these tokens as `Authorization: Bearer`, as `cloudflare:user:ada`. Keep them in a Worker secret. Access answers for a domain it fronts before the Worker sees a request, so tokens go to a URL it doesn't, like the Worker's `workers.dev` one. The CLI sends one from `BOARD_TOKEN`:
+- **`cloudflareAccess({ team, aud })`** verifies the JWT Cloudflare Access puts on every request it lets through (`Cf-Access-Jwt-Assertion`, or the `CF_Authorization` cookie) against the team's keys. A person is `cloudflare:user:<email>`, and grants name them by email, so an email with anything but letters, numbers, and `._-` before the `@` is refused; a service token is `cloudflare:service:<client id>`. A request a browser marks as another site's is refused, since a browser sends the Access cookie with any site's requests.
+- **`bearerTokens({ ada: '<token>' })`** lets in whoever sends one of these tokens as `Authorization: Bearer`, as `cloudflare:user:ada`. A handle is letters, numbers, and `._-`, starting with a letter or number; a token under any other handle is skipped, with an error in the log. Keep them in a Worker secret. Access answers for a domain it fronts before the Worker sees a request, so tokens go to a URL it doesn't, like the Worker's `workers.dev` one. The CLI sends one from `BOARD_TOKEN`:
 
 ```bash
 BOARD_URL=https://board.acme.workers.dev BOARD_TOKEN=<token> npx @vercel/board read ops
