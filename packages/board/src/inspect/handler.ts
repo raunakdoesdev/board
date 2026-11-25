@@ -29,8 +29,16 @@ const BODY_MAX = 1024 * 1024
  * one (`x-board-profile`). A write that names none is refused: the handle is the deployment, not
  * whoever's visiting, so the page asks who's posting before it loads.
  */
-export function inspector(options: { board: BoardClient; basePath: string }): InspectorHandler {
-  const { board } = options
+export function inspector(options: {
+  board: BoardClient
+  basePath: string
+  /**
+   * Who a request is, where a gateway in front signs people in: the profile it acts as, whatever the
+   * page names, or null for no one (401). The page starts as them and asks no one's name.
+   */
+  visitor?: (request: Request) => ProfileOption | null
+}): InspectorHandler {
+  const { board, visitor } = options
   const base = options.basePath.replace(/\/+$/, '')
   // The page and who it starts as, each read once per instance.
   const app = cached(installed)
@@ -44,7 +52,8 @@ export function inspector(options: { board: BoardClient; basePath: string }): In
     if (relative(path)) return json(400, { error: { code: 'bad_path', message: 'no relative paths' } })
     let as: ProfileOption = null
     const named = request.headers.get('x-board-profile')
-    if (named !== null && named.trim() !== '') {
+    if (visitor) as = visitor(request)
+    else if (named !== null && named.trim() !== '') {
       try {
         const { name, avatar } = parseProfileHeader(named)
         as = avatar === null ? name : { name, avatar }
@@ -87,6 +96,7 @@ export function inspector(options: { board: BoardClient; basePath: string }): In
   }
 
   return async (request) => {
+    if (visitor && visitor(request) === null) return text(401, 'the gateway in front of this page names no one for this request')
     const url = new URL(request.url)
     const at = url.pathname === base || url.pathname.startsWith(`${base}/`) ? url.pathname.slice(base.length) || '/' : null
     if (at === null) return text(404, 'not found')
@@ -99,8 +109,8 @@ export function inspector(options: { board: BoardClient; basePath: string }): In
       return new Response(script, { headers: { ...HEADERS, 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'private, max-age=31536000, immutable' } })
     }
     // A board that won't say who the handle is still gets its page, which says why when it asks.
-    const profile = await started().catch(() => null)
-    return new Response(shell({ token: TOKEN, profile, base, named: true }), {
+    const profile = visitor ? visitor(request) : await started().catch(() => null)
+    return new Response(shell({ token: TOKEN, profile, base, named: !visitor }), {
       headers: { ...HEADERS, 'content-type': 'text/html; charset=utf-8', 'content-security-policy': CSP },
     })
   }

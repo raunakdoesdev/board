@@ -131,6 +131,34 @@ describe('the inspector in a route handler', () => {
   })
 })
 
+describe('the inspector in a route handler, behind a gateway that names its visitors', () => {
+  const behind = () => inspector({ board: client, basePath: '/board', visitor: (request) => request.headers.get('x-visitor') })
+
+  it('starts the page as the visitor, asking no name', async () => {
+    const html = await (await behind()(new Request(`${ORIGIN}/board`, { headers: { 'x-visitor': 'ada' } }))).text()
+    expect(html).toContain('<meta name="inspect-profile" content="&#34;ada&#34;">')
+    expect(html).not.toContain('inspect-named')
+  })
+
+  it('writes as the visitor, whatever profile the page names', async () => {
+    const posted = await behind()(
+      new Request(`${ORIGIN}/board/board/messages`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...PAGE, 'x-visitor': 'ada', 'x-board-profile': 'mallory' },
+        body: JSON.stringify({ channel: 'gated', text: 'from the gateway' }),
+      }),
+    )
+    expect(posted.status).toBe(201)
+    const [message] = (await client.channel('gated').messages()).messages
+    expect(message).toMatchObject({ text: 'from the gateway', by: { actor: 'vercel:user:u_julian+ada' } })
+  })
+
+  it('answers no one the gateway names no one', async () => {
+    expect((await behind()(new Request(`${ORIGIN}/board`))).status).toBe(401)
+    expect((await behind()(new Request(`${ORIGIN}/board/board/me`, { headers: PAGE }))).status).toBe(401)
+  })
+})
+
 describe('the inspector in a route handler, on a board that refuses its handle', () => {
   it('still serves the page, which says why when it asks', async () => {
     const refused = createBoardClient({ url: `${server.origin}/api/board`, token: 'not-a-token', profile: null })
