@@ -92,11 +92,15 @@ describe('a Durable Object alarm', () => {
     await scheduler.schedule({ version: 1, kind: 'drain', contract: 'nobody-serves-this', sessionId: 's1', dueAt })
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     await scheduler.alarm()
-    error.mockRestore()
-    expect(storage.alarmAt()).toBeGreaterThan(Date.now())
-    // A restart still has it.
+    const retry = storage.alarmAt()
+    expect(retry).toBeGreaterThan(Date.now())
+    // A restart still has it, and tries it again when that alarm goes off.
+    vi.spyOn(Date, 'now').mockReturnValue(retry! + 1)
     await alarmScheduler(storage).alarm()
-    expect(storage.alarmAt()).toBeGreaterThan(Date.now())
+    vi.mocked(Date.now).mockRestore()
+    expect(error.mock.calls.map(([line]) => String(line))).toEqual([expect.stringContaining('attempt 1 of'), expect.stringContaining('attempt 2 of')])
+    expect(storage.alarmAt()).toBeGreaterThan(retry!)
+    error.mockRestore()
   })
 })
 
@@ -123,6 +127,12 @@ describe('authenticating on Cloudflare', () => {
     const team = board({ backend: durableObject(durableStorage()), authenticate: bearerTokens({ ada: 'tok_ada' }), url: BOARD_URL })
     expect(await whoIs(team, { authorization: 'Bearer tok_ada' })).toBe('cloudflare:user:ada')
     expect(await whoIs(team, { authorization: 'Bearer tok_bob' })).toBe(401)
+
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const odd = board({ backend: durableObject(durableStorage()), authenticate: bearerTokens({ _bot: 'tok_bot', 'no one': 'tok_none' }), url: BOARD_URL })
+    expect(await whoIs(odd, { authorization: 'Bearer tok_bot' })).toBe('cloudflare:user:_bot')
+    expect(await whoIs(odd, { authorization: 'Bearer tok_none' })).toBe(401)
+    error.mockRestore()
   })
 
   it("lets in a person Cloudflare Access signed in, by email, and refuses another application's token", async () => {
@@ -165,5 +175,6 @@ describe('authenticating on Cloudflare', () => {
     const plus = await whoIs(team, { 'cf-access-jwt-assertion': await sign('a+b@example.com') })
     expect(plain).toBe('cloudflare:user:a_b@example.com')
     expect(plus).not.toBe(plain)
+    expect(await whoIs(team, { 'cf-access-jwt-assertion': await sign("o'connor@example.com") })).toBe("cloudflare:user:o'connor@example.com")
   })
 })
