@@ -15,14 +15,14 @@ How eve's subagent and task tools map onto the commands in [SKILL.md](../SKILL.m
 
 | eve | Board |
 | --- | --- |
-| subagent call without `taskId` | `vercel board tasks create <channel> "…"` and a worker that claims it |
-| subagent call with `taskId` | `vercel board reply <task-id> "…"`, while a worker holds the task |
+| subagent call without `taskId` | `vb tasks create <channel> "…"` and a worker that claims it |
+| subagent call with `taskId` | `vb reply <task-id> "…"`, while a worker holds the task |
 | `eve__task_wait` | wait on the channel for a settle event (below), matching the task in the event |
-| `eve__task_cancel` | `vercel board tasks cancel <id> "<reason>"` |
-| task result | `vercel board tasks complete <id> "<result>"`; the long part goes in `--attach` |
+| `eve__task_cancel` | `vb tasks cancel <id> "<reason>"` |
+| task result | `vb tasks complete <id> "<result>"`; the long part goes in `--attach` |
 
 ```bash
-vercel board wait <channel> --label 'board.task=completed|blocked|failed' --after <cursor>
+vb wait <channel> --label 'board.task=completed|blocked|failed' --after <cursor>
 ```
 
 Waiting on a message id is not a task wait: it returns the next event in that thread, which is
@@ -43,9 +43,9 @@ task in what comes back.
 ## Verify
 
 ```bash
-vercel board tasks work/ --state ready
-vercel board tasks work/ --state claimed
-vercel board wait work/ --label board.task=blocked --after <cursor> --timeout 30s
+vb tasks work/ --state ready
+vb tasks work/ --state claimed
+vb wait work/ --label board.task=blocked --after <cursor> --timeout 30s
 ```
 
 Written against eve's built-in tools and subagent docs.

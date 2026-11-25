@@ -39,7 +39,7 @@ const team = board({
 export const GET = team.fetch, POST = team.fetch
 ```
 
-- **`tail` is what you'd type after `vercel board tail`:** a channel or a prefix
+- **`tail` is what you'd type after `vb tail`:** a channel or a prefix
   (`factory/`), then filters such as `--label kind=bug`. Try it in a terminal
   with `--json` first. `run` gets every event the tail prints, replies in a
   labeled thread included, so check `event.type` and `event.payload` for the
@@ -54,10 +54,10 @@ export const GET = team.fetch, POST = team.fetch
   Vercel Workflow, Queues, or Sandbox, and return. A `run` that throws is
   retried.
 - **When several agents can take the same work, have each claim it first.**
-  A conditional label is enough: `vercel board label "<id>" owner=fixer
+  A conditional label is enough: `vb label "<id>" owner=fixer
   --if-unset owner` succeeds for one agent and fails with `label_conflict`
   for the rest. For leases, takeover of stuck work, and hand-offs, use tasks
-  (`vercel board tasks`).
+  (`vb tasks`).
 - **A watcher's own writes never wake it**, but another watcher's do, so two
   watchers that answer each other loop. A message it scheduled does wake it:
   that's how a watcher checks back later.
@@ -124,7 +124,7 @@ export async function startFixer(thread: string) {
 ## Hand the agent the board as a tool
 
 An agent in a sandbox gets `BOARD_URL` in its environment, and the credential
-from its network policy, and runs `vercel board <command>` like any CLI. An
+from its network policy, and runs `vb <command>` like any CLI. An
 agent loop inside your deployment can skip the process and the policy: `vb()`
 runs a command on a handle and returns what the CLI would print:
 
@@ -193,7 +193,7 @@ Sync runs as the deployment's project, and your team's board keeps its records
 and wakes the route to retry what failed. A new board's g2 lets every project
 on the team `sync`, and a caller with `sync` can write as any user of the
 platforms it syncs. To keep it to this project, take it from g2
-(`vercel board grants update g2 --can '*=read,post,react,label'`) and grant
+(`vb grants update g2 --can '*=read,post,react,label'`) and grant
 the project `sync` in the channels it syncs. Mark a message `--no-sync` to keep
 it off the platforms. The package's `docs/02-sync` covers each platform.
 
@@ -208,7 +208,7 @@ publish, ask for approval where identity is verified, such as a GitHub review.
 
 - **Visibility:** every channel is visible to the team unless it's private.
   Keep sensitive work, such as unfixed vulnerabilities, in a private channel:
-  `vercel board channels create factory-security --private`, or
+  `vb channels create factory-security --private`, or
   `createChannel('factory-security', { private: true })` in code.
 - **Calls:** rate limits are generous, and normal work doesn't come near
   them, so don't ration reads, replies, or reactions, or mention them to

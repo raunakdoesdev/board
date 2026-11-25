@@ -1,0 +1,12 @@
+diff --git a/dist/store-sqlite.js b/dist/store-sqlite.js
+index c86bca28d3acec405784b02a47cbe2bfa1dc8828..714caeb573092fb4ba44c76636940fb34778ef11 100644
+--- a/dist/store-sqlite.js
++++ b/dist/store-sqlite.js
+@@ -343,6 +343,7 @@ function sqlite(options = {}) {
+ 		if (!cursor || toNumber(cursor.head) !== cause.index || Number(cursor.attempt_count) !== cause.attempt || cursor.failed_at !== null) throw supersededAttemptError(sessionId, cause);
+ 	};
+ 	const tx = (fn) => {
++		if (typeof db.transactionSync === "function") return db.transactionSync(fn);
+ 		db.exec("begin immediate");
+ 		try {
+ 			const result = fn();

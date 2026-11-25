@@ -19,6 +19,8 @@ export type Db = {
    * written, when the claim returns no row.
    */
   commit(claim: Sql, writes: Sql[]): Promise<boolean>
+  /** The most parameters one statement binds, where it's fewer than SQLite's. */
+  maxBindings?: number
   close(): Promise<void>
 }
 
@@ -174,6 +176,7 @@ const parse = (row: Record<string, unknown> | undefined): Message | null =>
 
 /** The tables on a SQL database. */
 export function sqlTables(db: Db): MessageTables {
+  const perInsert = db.maxBindings ? Math.floor(db.maxBindings / 3) : TERMS_PER_INSERT
   /**
    * Tables from before mentions were text index a message's mentions as the actor IDs its write
    * resolved them to. Once per database, each message whose text has an `@` gets the terms its
@@ -317,10 +320,10 @@ export function sqlTables(db: Db): MessageTables {
       if (terms) {
         if (!m.created) out.push({ text: 'delete from board_terms where message_id = $1', values: [m.id] })
         // A few hundred rows to a statement: a message's terms can outnumber SQLite's bound parameters.
-        for (let first = 0; first < terms.length; first += TERMS_PER_INSERT) {
+        for (let first = 0; first < terms.length; first += perInsert) {
           const p = new Params()
           const tuples = terms
-            .slice(first, first + TERMS_PER_INSERT)
+            .slice(first, first + perInsert)
             .map(([term, value]) => `(${p.add(m.id)}, ${p.add(term)}, ${p.add(value)})`)
           out.push({ text: `insert into board_terms (message_id, term, value) values ${tuples.join(', ')}`, values: p.values })
         }

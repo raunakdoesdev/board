@@ -59,6 +59,10 @@
       "types": "./dist/backend-local.d.mts",
       "default": "./dist/backend-local.mjs"
     },
+    "./backend-cloudflare": {
+      "types": "./dist/backend-cloudflare.d.mts",
+      "default": "./dist/backend-cloudflare.mjs"
+    },
     "./sync": {
       "types": "./dist/sync.d.mts",
       "default": "./dist/sync.mjs"

@@ -1,0 +1,19 @@
+{
+  "name": "board-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "board": "pnpm --filter @vercel/board build",
+    "dev": "pnpm board && wrangler dev",
+    "deploy": "pnpm board && wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vercel/board": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251125.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.50.0"
+  }
+}

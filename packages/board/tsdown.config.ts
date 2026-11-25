@@ -37,6 +37,8 @@ export default defineConfig([
       conformance: 'src/conformance/index.ts',
       // `@vercel/board/backend-local`: a board kept in this process, Node only.
       'backend-local': 'src/backend-local/index.ts',
+      // `@vercel/board/backend-cloudflare`: a board kept in a Durable Object, its files in R2.
+      'backend-cloudflare': 'src/backend-cloudflare/index.ts',
       sync: 'src/sync/index.ts',
       'sync-chat-sdk': 'src/sync/chat-sdk.ts',
       'sync-slack': 'src/sync/slack.ts',
@@ -65,6 +67,8 @@ export default defineConfig([
       onlyBundle: [/^experimental-a2(\/|$)/],
       dts: { alwaysBundle: [/^experimental-a2(\/|$)/] },
     },
+    // A2's SQLite store opens a Durable Object's database where one is given, and Node's anywhere else.
+    alias: { 'node:sqlite': here('src/store/node-sqlite.ts') },
     plugins: [inspectorPage()],
     clean: true,
   },

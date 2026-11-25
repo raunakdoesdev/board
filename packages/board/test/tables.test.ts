@@ -10,6 +10,8 @@ import type { ParsedFilters } from '../src/api/routes.ts'
 import { memory } from '../src/store/memory.ts'
 import { sqliteDb } from '../src/store/sqlite-db.ts'
 import { sqlite } from '../src/store/sqlite.ts'
+import { durableStore } from '../src/store/durable.ts'
+import { durableStorage } from './durable-storage.ts'
 import { project } from '../src/store/project.ts'
 import { sqlTables } from '../src/store/sql.ts'
 import type { BoardStore, MessageTables } from '../src/store/types.ts'
@@ -519,10 +521,11 @@ const tablesOf = (store: BoardStore): MessageTables => ({ ...store.tables, close
 const dir = mkdtempSync(join(tmpdir(), 'board-tables-'))
 let opened = 0
 
-/** The tables as a local board keeps them: SQLite in a file, or `memory()`. */
+/** The tables as a local board keeps them: SQLite in a file, or `memory()`, and as a Durable Object does. */
 const BACKENDS: { name: string; open: () => Promise<MessageTables>; enabled: boolean }[] = [
   { name: 'SQLite, in a file', open: async () => tablesOf(sqlite({ path: join(dir, `${++opened}.db`) })), enabled: true },
   { name: 'memory()', open: async () => tablesOf(memory()), enabled: true },
+  { name: 'a Durable Object', open: async () => tablesOf(durableStore(durableStorage())), enabled: true },
 ]
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
