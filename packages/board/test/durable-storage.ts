@@ -14,6 +14,7 @@ export function durableStorage() {
       exec(query, ...bindings) {
         if (/^\s*(begin|commit|rollback|savepoint|release|pragma)\b/i.test(query)) throw new Error(`not authorized: ${query.trim().split(/\s/)[0]}`)
         if (bindings.length > 100) throw new Error('too many SQL variables')
+        if (new TextEncoder().encode(query).length > 100_000) throw new Error('statement too long')
         if (bindings.length === 0 && !/^\s*(select|with)\b/i.test(query)) {
           db.exec(query)
           return { toArray: () => [] }
