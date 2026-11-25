@@ -138,6 +138,7 @@ describe('the inspector in a route handler, behind a gateway that names its visi
     const html = await (await behind()(new Request(`${ORIGIN}/board`, { headers: { 'x-visitor': 'ada' } }))).text()
     expect(html).toContain('<meta name="inspect-profile" content="&#34;ada&#34;">')
     expect(html).not.toContain('inspect-named')
+    expect(html).toContain('<meta name="inspect-fixed" content="1">')
   })
 
   it('writes as the visitor, whatever profile the page names', async () => {

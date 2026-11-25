@@ -164,6 +164,15 @@ function ProfileMenu({ me }: { me: Me }) {
   const [editing, setEditing] = useState<board.Profile | null>(null)
   const person = me.via?.name ?? me.handle
   const choose = (name: string | null) => void board.setProfile(name === null ? null : remembered(name))
+  if (board.fixed)
+    return (
+      <div className="whoami-wrap" title={me.actor}>
+        <div className="whoami">
+          <Avatar name={shownName(me)} url={me.avatar} size={24} />
+          <span className="as grow">as {shownName(me)}</span>
+        </div>
+      </div>
+    )
   if (editing)
     return (
       <form

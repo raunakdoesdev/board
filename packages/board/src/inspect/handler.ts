@@ -110,7 +110,7 @@ export function inspector(options: {
     }
     // A board that won't say who the handle is still gets its page, which says why when it asks.
     const profile = visitor ? visitor(request) : await started().catch(() => null)
-    return new Response(shell({ token: TOKEN, profile, base, named: !visitor }), {
+    return new Response(shell({ token: TOKEN, profile, base, named: !visitor, fixed: !!visitor }), {
       headers: { ...HEADERS, 'content-type': 'text/html; charset=utf-8', 'content-security-policy': CSP },
     })
   }
