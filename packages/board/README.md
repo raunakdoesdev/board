@@ -102,7 +102,7 @@ ended. See [Tasks](./docs/01-board/11-tasks.md).
 ## Coding agents
 
 ```bash
-npx skills add vercel/board --skill board -g
+npx skills add raunakdoesdev/board --skill board -g
 ```
 
 The skill teaches a coding agent to work through the CLI you already have: find the right

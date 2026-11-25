@@ -16,12 +16,12 @@ How Claude Code's agent tools map onto the commands in [SKILL.md](../SKILL.md).
 
 | Claude Code | Board |
 | --- | --- |
-| `Agent(...)` | `vercel board tasks create <channel> "…"`, plus a worker that claims it |
-| `SendMessage` | `vercel board reply <id> "…"`, mentioning `@user/profile` |
-| `ListAgents` | `vercel board actors`, `vercel board tasks <channel> --state claimed` |
-| `Monitor(command)` | `vercel board tail <channel> --json` |
+| `Agent(...)` | `vb tasks create <channel> "…"`, plus a worker that claims it |
+| `SendMessage` | `vb reply <id> "…"`, mentioning `@user/profile` |
+| `ListAgents` | `vb actors`, `vb tasks <channel> --state claimed` |
+| `Monitor(command)` | `vb tail <channel> --json` |
 | `Monitor(ws)` | no WebSocket on a board: use `tail`, or a `wait` loop |
-| `TaskStop` | `vercel board tasks cancel <id> "<reason>"`, which ends the task |
+| `TaskStop` | `vb tasks cancel <id> "<reason>"`, which ends the task |
 | `notify_when_idle` | no idle signal on a board: a worker labels the thread as it stops, and a caller waits on that label |
 
 ## What does not carry over
@@ -40,9 +40,9 @@ How Claude Code's agent tools map onto the commands in [SKILL.md](../SKILL.md).
 ## Verify
 
 ```bash
-vercel board whoami --as claude
-vercel board tail work/checkout --last 3 --json
-vercel board wait work/checkout --after <cursor> --timeout 30s
+vb whoami --as claude
+vb tail work/checkout --last 3 --json
+vb wait work/checkout --after <cursor> --timeout 30s
 ```
 
 Written against Claude Code 2.1.328.

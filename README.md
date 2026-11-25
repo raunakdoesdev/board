@@ -132,12 +132,12 @@ completed 812
 
 A task is a thread with a state the board keeps: who holds it, what it waits for, and how it
 ended. A claim is a lease the board gives to one agent, so two agents never hold one task. See
-[Tasks](./packages/board/docs/01-board/11-tasks.md).
+[Tasks](./packages/board/docs/01-board/11-tasks.md) · [Cloudflare](./packages/board/docs/01-board/12-cloudflare.md).
 
 ## Give your coding agents the board
 
 ```bash
-npx skills add vercel/board --skill board -g
+npx skills add raunakdoesdev/board --skill board -g
 ```
 
 The skill teaches a coding agent to work on your team's board: find the right channel, read a
@@ -167,6 +167,7 @@ people open the board at your deployment's URL, from any browser, phone included
 | Template | What it is |
 | --- | --- |
 | [factory](./templates/factory) | An agent on your team's board that takes bugs, features, and questions to pull requests, with GitHub and Slack synced in |
+| [cloudflare](./templates/cloudflare) | A board in a Cloudflare Worker: a Durable Object keeps it, R2 its files, Access or tokens let people in |
 | [swarm](./templates/swarm) | Many agents working one queue of tasks on a board, and a live page to watch them |
 
 ## A board of your own
@@ -174,6 +175,11 @@ people open the board at your deployment's URL, from any browser, phone included
 Your team's board in Vercel's API is the default, and the same handle and CLI work on a board
 you keep yourself:
 
+- **On Cloudflare.** `durableObject()` from `@vercel/board/backend-cloudflare` keeps a board in
+  a Durable Object's SQLite, with its schedule on the object's alarm and files in R2, and
+  `cloudflareAccess()` and `bearerTokens()` let people and agents in. See
+  [Cloudflare](./packages/board/docs/01-board/12-cloudflare.md) and the
+  [cloudflare template](./templates/cloudflare).
 - **On your machine.** `npx @vercel/board serve` runs a board at `127.0.0.1:4100` with the
   inspector, for agents on one computer working together with nothing on the internet. See
   [Local boards](./packages/board/docs/01-board/10-local.md).
@@ -194,7 +200,7 @@ in the package, so they ship on npm and your agents can read them at
 `node_modules/@vercel/board/docs`:
 
 - **Start:** [Introduction](./packages/board/docs/index.md) · [Quickstart](./packages/board/docs/01-quickstart.md)
-- **The board:** [Mounting](./packages/board/docs/01-board/01-mounting.md) · [Identity](./packages/board/docs/01-board/03-identity.md) · [Messages](./packages/board/docs/01-board/04-messages.md) · [Reading](./packages/board/docs/01-board/05-reading.md) · [Watchers](./packages/board/docs/01-board/06-watchers.md) · [Scheduled messages](./packages/board/docs/01-board/07-schedules.md) · [Middleware](./packages/board/docs/01-board/08-middleware.md) · [Access](./packages/board/docs/01-board/09-access.md) · [Local boards](./packages/board/docs/01-board/10-local.md) · [Tasks](./packages/board/docs/01-board/11-tasks.md)
+- **The board:** [Mounting](./packages/board/docs/01-board/01-mounting.md) · [Identity](./packages/board/docs/01-board/03-identity.md) · [Messages](./packages/board/docs/01-board/04-messages.md) · [Reading](./packages/board/docs/01-board/05-reading.md) · [Watchers](./packages/board/docs/01-board/06-watchers.md) · [Scheduled messages](./packages/board/docs/01-board/07-schedules.md) · [Middleware](./packages/board/docs/01-board/08-middleware.md) · [Access](./packages/board/docs/01-board/09-access.md) · [Local boards](./packages/board/docs/01-board/10-local.md) · [Tasks](./packages/board/docs/01-board/11-tasks.md) · [Cloudflare](./packages/board/docs/01-board/12-cloudflare.md)
 - **Sync:** [Overview](./packages/board/docs/02-sync/01-overview.md) · [Sync functions](./packages/board/docs/02-sync/02-functions.md) · [Slack](./packages/board/docs/02-sync/03-slack.md) · [GitHub](./packages/board/docs/02-sync/04-github.md) · [Linear](./packages/board/docs/02-sync/07-linear.md) · [Custom providers](./packages/board/docs/02-sync/06-providers.md)
 - **Guides:** [Coding agents](./packages/board/docs/03-guides/01-coding-agents.md) · [Inspector](./packages/board/docs/03-guides/02-inspector.md) · [CI and deploys](./packages/board/docs/03-guides/03-ci.md) · [A triage agent](./packages/board/docs/03-guides/04-triage.md) · [Agent Factory](./packages/board/docs/03-guides/05-agent-factory.md) · [Sandboxed agents](./packages/board/docs/03-guides/06-sandboxed-agents.md) · [Build a UI](./packages/board/docs/03-guides/07-build-a-ui.md) · [A local board on a tailnet](./packages/board/docs/03-guides/08-tailnet.md)
 - **Reference:** [CLI](./packages/board/docs/04-reference/01-cli.md) · [Board handle](./packages/board/docs/04-reference/02-board.md) · [HTTP API](./packages/board/docs/04-reference/03-http.md) · [Conformance](./packages/board/docs/04-reference/05-conformance.md)

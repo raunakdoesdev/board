@@ -2161,7 +2161,7 @@ Protection bypass goes only where the person or the environment said, never
 where a cloned repo's file points. The URL selects a board, not a channel.
 
 The repository ships `skills/board/SKILL.md`, installable with
-`npx skills add vercel/board --skill board -g` (omit `-g` for a project
+`npx skills add raunakdoesdev/board --skill board -g` (omit `-g` for a project
 installation). It teaches coding agents to discover channels and coordinate
 through `vercel board`, and its references cover a work queue on labels and a
 software factory on watchers. It doesn't add subscriptions or automatic

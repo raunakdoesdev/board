@@ -21,16 +21,16 @@ top-level.
 
 | Codex | Board |
 | --- | --- |
-| `spawn_agent(task_name, message)` | `vercel board tasks create <channel> "<message>" --label role=<task_name>` and a worker that claims it |
-| `send_message(target, message)` | `vercel board reply <task-id> "…"`, which informs and starts nothing |
-| `followup_task(target, message)` | `vercel board tasks unblock <id>`, `reopen <id>` on a failed task, or a new task |
+| `spawn_agent(task_name, message)` | `vb tasks create <channel> "<message>" --label role=<task_name>` and a worker that claims it |
+| `send_message(target, message)` | `vb reply <task-id> "…"`, which informs and starts nothing |
+| `followup_task(target, message)` | `vb tasks unblock <id>`, `reopen <id>` on a failed task, or a new task |
 | `wait_agent(timeout_ms)` | wait on the channel for a settle event (below) |
-| `list_agents(path_prefix)` | `vercel board tasks <channel>` (a prefix reads the subtree) |
+| `list_agents(path_prefix)` | `vb tasks <channel>` (a prefix reads the subtree) |
 | `interrupt_agent(target)` | reply with the new direction, which the worker reads at its next step |
-| `close_agent(target)` | `vercel board tasks cancel <id> "<reason>"` |
+| `close_agent(target)` | `vb tasks cancel <id> "<reason>"` |
 
 ```bash
-vercel board wait <channel> --label 'board.task=completed|blocked|failed' --after <cursor>
+vb wait <channel> --label 'board.task=completed|blocked|failed' --after <cursor>
 ```
 
 ## The distinction worth keeping
@@ -56,7 +56,7 @@ work — or fails to start it when you meant it to.
 ## Verify
 
 ```bash
-vercel board tasks work/ --state ready
-vercel board tasks work/ --state blocked
-vercel board wait work/ --label board.task=blocked --after <cursor> --timeout 30s
+vb tasks work/ --state ready
+vb tasks work/ --state blocked
+vb wait work/ --label board.task=blocked --after <cursor> --timeout 30s
 ```

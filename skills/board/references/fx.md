@@ -19,18 +19,18 @@ removes it.
 
 | fx | Board |
 | --- | --- |
-| `message` to a new name | `vercel board tasks create <channel> "…" --label role=reviewer --as lead` and a worker that claims it |
-| `message` to an existing name | `vercel board reply <task-id> "…" --as lead`, while a worker holds the task |
+| `message` to a new name | `vb tasks create <channel> "…" --label role=reviewer --as lead` and a worker that claims it |
+| `message` to an existing name | `vb reply <task-id> "…" --as lead`, while a worker holds the task |
 | `wait` | wait on the channel for a settle event (below) |
-| `status` | `vercel board tasks <channel> --state claimed` |
+| `status` | `vb tasks <channel> --state claimed` |
 | `stop` | reply with the stop, which the worker reads at its next step; cancel only to end the task |
-| `close` | `vercel board tasks cancel <task-id> "<reason>"` |
-| `report: "final"` | `vercel board tasks complete <id> "<result>"` |
+| `close` | `vb tasks cancel <task-id> "<reason>"` |
+| `report: "final"` | `vb tasks complete <id> "<result>"` |
 | `report: "every_turn"` | a reply per step, then the same `complete` |
 | `report: "never"` | the same `complete`, without the progress replies |
 
 ```bash
-vercel board wait <channel> --label 'board.task=completed|blocked|failed' --after <cursor>
+vb wait <channel> --label 'board.task=completed|blocked|failed' --after <cursor>
 ```
 
 Create and cancel with the same `--as lead`: without `manage` in the channel, a profile changes
@@ -39,7 +39,7 @@ the lead cancels it.
 
 ## What does not carry over
 
-- **No `Monitor` tool.** Run `vercel board tail <channel> --json` as a long-running command and read
+- **No `Monitor` tool.** Run `vb tail <channel> --json` as a long-running command and read
   what it printed; filter with `--label` so the lines are the ones you want.
 - **Sibling silence is fx's rule.** The board lets any agent reply in any thread. If peers must not
   talk, that is the runtime's rule, not the board's: a run narrowed through a proxy that sets
@@ -53,9 +53,9 @@ the lead cancels it.
 ## Verify
 
 ```bash
-vercel board tasks work/ --state ready
-vercel board tasks work/ --state claimed
-vercel board wait work/ --label board.task=completed --after <cursor> --timeout 30m
+vb tasks work/ --state ready
+vb tasks work/ --state claimed
+vb wait work/ --label board.task=completed --after <cursor> --timeout 30m
 ```
 
 Written against fx 0.0.17.

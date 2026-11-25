@@ -1,11 +1,16 @@
 packages:
   - packages/*
   - apps/*
+  - templates/cloudflare
 # esbuild (via vitest) only checks its platform binary at install; the tests run without it.
 allowBuilds:
   esbuild: false
-minimumReleaseAgeExclude:
+  # wrangler dev runs workerd, whose install checks its platform binary.
+  workerd: true
 
 ignoredOptionalDependencies:
   - "@mongodb-js/zstd"
   - "node-liblzma"
+
+patchedDependencies:
+  experimental-a2@0.24.0: patches/experimental-a2@0.24.0.patch
